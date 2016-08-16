@@ -6,6 +6,10 @@ import pl.allegro.tech.hermes.consumers.consumer.filtering.FilteredMessageHandle
 import pl.allegro.tech.hermes.consumers.consumer.filtering.chain.FilterChain;
 import pl.allegro.tech.hermes.consumers.consumer.filtering.chain.FilterChainFactory;
 import pl.allegro.tech.hermes.consumers.consumer.filtering.chain.FilterResult;
+import pl.allegro.tech.hermes.consumers.consumer.filtering.FilteredMessageHandler;
+import pl.allegro.tech.hermes.consumers.consumer.offset.FailedToCommitOffsets;
+import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetsToCommit;
+import pl.allegro.tech.hermes.consumers.consumer.offset.SubscriptionPartitionOffset;
 import pl.allegro.tech.hermes.consumers.consumer.receiver.MessageReceiver;
 
 import java.util.Objects;
@@ -39,7 +43,7 @@ public class FilteringMessageReceiver implements MessageReceiver {
 
     private boolean allow(Message message) {
         FilterResult result = filterChain.apply(message);
-        filteredMessageHandler.handle(result, message, subscription);
+        filteredMessageHandler.handle(result, message, subscription, receiver::commit);
         return !result.isFiltered();
     }
 
@@ -55,5 +59,15 @@ public class FilteringMessageReceiver implements MessageReceiver {
         }
         this.subscription = newSubscription;
         this.receiver.update(newSubscription);
+    }
+
+    @Override
+    public FailedToCommitOffsets commit(OffsetsToCommit offsets) {
+        return receiver.commit(offsets);
+    }
+
+    @Override
+    public void moveOffset(SubscriptionPartitionOffset offset) {
+        receiver.moveOffset(offset);
     }
 }

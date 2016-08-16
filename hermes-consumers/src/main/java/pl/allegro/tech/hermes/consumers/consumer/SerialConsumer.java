@@ -7,6 +7,7 @@ import pl.allegro.tech.hermes.api.Topic;
 import pl.allegro.tech.hermes.common.config.ConfigFactory;
 import pl.allegro.tech.hermes.common.metric.HermesMetrics;
 import pl.allegro.tech.hermes.consumers.consumer.converter.MessageConverterResolver;
+import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetCommitter;
 import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetQueue;
 import pl.allegro.tech.hermes.consumers.consumer.offset.SubscriptionPartitionOffset;
 import pl.allegro.tech.hermes.consumers.consumer.rate.AdjustableSemaphore;
@@ -32,7 +33,6 @@ public class SerialConsumer implements Consumer {
     private final Trackers trackers;
     private final MessageConverterResolver messageConverterResolver;
     private final ConsumerMessageSender sender;
-    private final OffsetQueue offsetQueue;
     private final ConsumerAuthorizationHandler consumerAuthorizationHandler;
     private final AdjustableSemaphore inflightSemaphore;
 
@@ -44,6 +44,8 @@ public class SerialConsumer implements Consumer {
 
     private MessageReceiver messageReceiver;
 
+    private OffsetCommitter committer;
+
     public SerialConsumer(ReceiverFactory messageReceiverFactory,
                           HermesMetrics hermesMetrics,
                           Subscription subscription,
@@ -53,7 +55,6 @@ public class SerialConsumer implements Consumer {
                           MessageConverterResolver messageConverterResolver,
                           Topic topic,
                           ConfigFactory configFactory,
-                          OffsetQueue offsetQueue,
                           ConsumerAuthorizationHandler consumerAuthorizationHandler) {
 
         this.defaultInflight = configFactory.getIntProperty(CONSUMER_INFLIGHT_SIZE);
@@ -63,16 +64,16 @@ public class SerialConsumer implements Consumer {
         this.hermesMetrics = hermesMetrics;
         this.subscription = subscription;
         this.rateLimiter = rateLimiter;
-        this.offsetQueue = offsetQueue;
         this.consumerAuthorizationHandler = consumerAuthorizationHandler;
-        this.sender = consumerMessageSenderFactory.create(subscription, rateLimiter, offsetQueue,
-                inflightSemaphore::release);
         this.trackers = trackers;
         this.messageConverterResolver = messageConverterResolver;
         this.messageReceiver = () -> {
             throw new IllegalStateException("Consumer not initialized");
         };
         this.topic = topic;
+        this.committer = new OffsetCommitter(new OffsetQueue(hermesMetrics, configFactory), messageReceiver::commit, hermesMetrics);
+        this.sender = consumerMessageSenderFactory.create(subscription, rateLimiter, committer,
+                inflightSemaphore::release);
     }
 
     private int calculateInflightSize(Subscription subscription) {
@@ -112,7 +113,7 @@ public class SerialConsumer implements Consumer {
     }
 
     private void sendMessage(Message message) {
-        offsetQueue.offerInflightOffset(SubscriptionPartitionOffset.subscriptionPartitionOffset(message, subscription));
+        committer.offerInflightOffset(SubscriptionPartitionOffset.subscriptionPartitionOffset(message, subscription));
 
         hermesMetrics.incrementInflightCounter(subscription);
         trackers.get(subscription).logInflight(toMessageMetadata(message, subscription));
@@ -161,5 +162,15 @@ public class SerialConsumer implements Consumer {
             messageReceiver.stop();
             initializeMessageReceiver();
         }
+    }
+
+    @Override
+    public void commit() {
+        committer.commit();
+    }
+
+    @Override
+    public void moveOffset(SubscriptionPartitionOffset offset) {
+        messageReceiver.moveOffset(offset);
     }
 }

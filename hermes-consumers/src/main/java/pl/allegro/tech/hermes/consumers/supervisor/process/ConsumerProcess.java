@@ -29,17 +29,23 @@ public class ConsumerProcess implements Runnable {
 
     private long healtcheckRefreshTime;
 
+    private volatile long offsetCommitTime;
+
+    private long commitIntervalMs;
+
     public ConsumerProcess(
             SubscriptionName subscriptionName,
             Consumer consumer,
             Retransmitter retransmitter,
             java.util.function.Consumer<SubscriptionName> shutdownCallback,
+            int commitIntervalMs,
             Clock clock
     ) {
         this.subscriptionName = subscriptionName;
         this.consumer = consumer;
         this.retransmitter = retransmitter;
         this.shutdownCallback = shutdownCallback;
+        this.commitIntervalMs = commitIntervalMs;
         this.clock = clock;
         this.healtcheckRefreshTime = clock.millis();
     }
@@ -52,14 +58,24 @@ public class ConsumerProcess implements Runnable {
             start();
             while (running && !Thread.interrupted()) {
                 consumer.consume(() -> processSignals());
+                commitAtInterval();
             }
             stop();
 
+        } catch (Exception ex) {
+            logger.error("Consumer process of subscription {} failed", subscriptionName, ex);
         } finally {
             logger.info("Releasing consumer process thred of subscription {}", subscriptionName);
             shutdownCallback.accept(subscriptionName);
             refreshHealthcheck();
             Thread.currentThread().setName("consumer-released-thread");
+        }
+    }
+
+    private void commitAtInterval() {
+        if (clock.millis() - offsetCommitTime > commitIntervalMs) {
+            consumer.commit();
+            this.offsetCommitTime = clock.millis();
         }
     }
 
@@ -123,9 +139,7 @@ public class ConsumerProcess implements Runnable {
     private void retransmit() {
         long startTime = clock.millis();
         logger.info("Starting retransmission for consumer of subscription {}", subscriptionName);
-        stop();
-        retransmitter.reloadOffsets(subscriptionName);
-        start();
+        retransmitter.reloadOffsets(subscriptionName, consumer);
         logger.info("Done retransmission for consumer of subscription {} in {}ms", subscriptionName, clock.millis() - startTime);
     }
 
@@ -164,6 +178,4 @@ public class ConsumerProcess implements Runnable {
     public Consumer getConsumer() {
         return consumer;
     }
-
-
 }
