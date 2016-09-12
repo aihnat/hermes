@@ -17,7 +17,7 @@ public class OffsetQueue {
         int queueSize = configFactory.getIntProperty(Configs.CONSUMER_COMMIT_OFFSET_QUEUES_SIZE);
 
         this.inflightOffsetsQueue = new MonitoredMpscQueue<>(metrics, "inflightOffsets", queueSize);
-        this.commitOffsetsQueue = new MonitoredMpscQueue<>(metrics, "committedOffsets.", queueSize);
+        this.commitOffsetsQueue = new MonitoredMpscQueue<>(metrics, "committedOffsets", queueSize);
     }
 
     public void offerInflightOffset(SubscriptionPartitionOffset offset) {

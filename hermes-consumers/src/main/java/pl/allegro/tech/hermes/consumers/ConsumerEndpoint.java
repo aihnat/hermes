@@ -1,4 +1,4 @@
-package pl.allegro.tech.hermes.api.endpoints;
+package pl.allegro.tech.hermes.consumers;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;

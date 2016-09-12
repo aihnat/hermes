@@ -2,6 +2,7 @@ package pl.allegro.tech.hermes.test.helper.endpoint;
 
 import pl.allegro.tech.hermes.api.Topic;
 import pl.allegro.tech.hermes.api.endpoints.*;
+import pl.allegro.tech.hermes.consumers.ConsumerEndpoint;
 import pl.allegro.tech.hermes.test.helper.client.Hermes;
 
 import java.util.List;

@@ -5,6 +5,7 @@ import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.proxy.WebResourceFactory;
 import pl.allegro.tech.hermes.api.endpoints.*;
+import pl.allegro.tech.hermes.consumers.ConsumerEndpoint;
 
 import javax.ws.rs.Path;
 import javax.ws.rs.client.ClientBuilder;
