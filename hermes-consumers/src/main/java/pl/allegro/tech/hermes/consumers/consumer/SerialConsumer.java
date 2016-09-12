@@ -7,13 +7,16 @@ import pl.allegro.tech.hermes.api.Topic;
 import pl.allegro.tech.hermes.common.config.ConfigFactory;
 import pl.allegro.tech.hermes.common.metric.HermesMetrics;
 import pl.allegro.tech.hermes.consumers.consumer.converter.MessageConverterResolver;
+import pl.allegro.tech.hermes.consumers.consumer.offset.FailedToCommitOffsets;
 import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetCommitter;
 import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetQueue;
+import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetsToCommit;
 import pl.allegro.tech.hermes.consumers.consumer.offset.SubscriptionPartitionOffset;
 import pl.allegro.tech.hermes.consumers.consumer.rate.AdjustableSemaphore;
 import pl.allegro.tech.hermes.consumers.consumer.rate.SerialConsumerRateLimiter;
 import pl.allegro.tech.hermes.consumers.consumer.receiver.MessageReceiver;
 import pl.allegro.tech.hermes.consumers.consumer.receiver.ReceiverFactory;
+import pl.allegro.tech.hermes.consumers.consumer.receiver.UninitializedMessageReceiver;
 import pl.allegro.tech.hermes.tracker.consumers.Trackers;
 
 import java.util.Optional;
@@ -67,9 +70,7 @@ public class SerialConsumer implements Consumer {
         this.consumerAuthorizationHandler = consumerAuthorizationHandler;
         this.trackers = trackers;
         this.messageConverterResolver = messageConverterResolver;
-        this.messageReceiver = () -> {
-            throw new IllegalStateException("Consumer not initialized");
-        };
+        this.messageReceiver = new UninitializedMessageReceiver();
         this.topic = topic;
         this.committer = new OffsetCommitter(new OffsetQueue(hermesMetrics, configFactory), messageReceiver::commit, hermesMetrics);
         this.sender = consumerMessageSenderFactory.create(subscription, rateLimiter, committer,

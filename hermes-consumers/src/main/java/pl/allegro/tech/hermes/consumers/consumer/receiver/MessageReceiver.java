@@ -17,9 +17,7 @@ public interface MessageReceiver {
 
     default void update(Subscription newSubscription) {}
 
-    default FailedToCommitOffsets commit(OffsetsToCommit offsets) {
-        return new FailedToCommitOffsets();
-    };
+    FailedToCommitOffsets commit(OffsetsToCommit offsets);
 
-    default void moveOffset(SubscriptionPartitionOffset offset) {};
+    void moveOffset(SubscriptionPartitionOffset offset);
 }
