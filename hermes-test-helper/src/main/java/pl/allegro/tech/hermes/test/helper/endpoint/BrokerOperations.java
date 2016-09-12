@@ -58,13 +58,13 @@ public class BrokerOperations {
         createTopic(topicName, zkClients.get(brokerName));
     }
 
-    private void createTopic(String topicName, ZkUtils c) {
+    private void createTopic(String topicName, ZkUtils zkUtils) {
         Topic topic = topic(topicName).build();
         kafkaNamesMapper.toKafkaTopics(topic).forEach(kafkaTopic -> {
-            AdminUtils.createTopic(c, kafkaTopic.name().asString(), DEFAULT_PARTITIONS, DEFAULT_REPLICATION_FACTOR, new Properties(), RackAwareMode.Enforced$.MODULE$);
+            AdminUtils.createTopic(zkUtils, kafkaTopic.name().asString(), DEFAULT_PARTITIONS, DEFAULT_REPLICATION_FACTOR, new Properties(), RackAwareMode.Enforced$.MODULE$);
 
             waitAtMost(adjust(Duration.ONE_MINUTE)).until(() -> {
-                        AdminUtils.topicExists(c, kafkaTopic.name().asString());
+                        AdminUtils.topicExists(zkUtils, kafkaTopic.name().asString());
                     }
             );
         });
